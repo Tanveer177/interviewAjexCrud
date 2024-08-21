@@ -1,0 +1,133 @@
+ajax_crud_laravel_10
+1st
+composer create-project --prefer-dist laravel/laravel ajax_crud_laravel_10
+
+2nd
+cd ajax_crud_laravel_10
+
+3rd
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=laravel_10_ajax_crud
+DB_USERNAME=root
+DB_PASSWORD=
+
+4th
+php artisan make:migration create_products_table --create=products
+
+5th
+public function up()
+{
+    Schema::create('products', function (Blueprint $table) {
+            $table->bigIncrements('id');
+            $table->string('title')->nullable();
+            $table->longText('description')->nullable();
+            $table->timestamps();
+        });
+    }
+}
+
+
+6th
+routes/web.php
+
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\ProductAjaxController;
+Route::resource('products', ProductAjaxController::class);
+
+
+
+7th
+php artisan make:controller ProductAjaxController --resource --model=Product
+
+
+8th
+App/Models/Product.php
+class Product extends Model
+{
+    protected $fillable = [
+        'id', 'title', 'description'
+    ];
+}
+
+9th
+app/Http/Controllers/ProductAjaxController.php
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Product;
+use Illuminate\Http\Request;
+use DataTables;
+
+class ProductAjaxController extends Controller
+{
+    /**
+     * Display a listing of the resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function index(Request $request)
+    {
+
+        if ($request->ajax()) {
+            $product = Product::latest()->get();
+            return Datatables::of($data)
+                    ->addIndexColumn()
+                    ->addColumn('action', function($row){
+
+                           $btn = '<a href="javascript:void(0)" data-toggle="tooltip"  data-id="'.$row->id.'" data-original-title="Edit" class="edit btn btn-primary btn-sm editProduct">Edit</a>';
+
+                           $btn = $btn.' <a href="javascript:void(0)" data-toggle="tooltip"  data-id="'.$row->id.'" data-original-title="Delete" class="btn btn-danger btn-sm deleteProduct">Delete</a>';
+
+                            return $btn;
+                    })
+                    ->rawColumns(['action'])
+                    ->make(true);
+        }
+
+        return view('productAjax',compact('product'));
+    }
+
+    /**
+     * Store a newly created resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
+    public function store(Request $request)
+    {
+        Product::updateOrCreate([
+                'id' => $request->id,
+                'title' => $request->title,
+                'description' => $request->description
+        ]);
+
+        return response()->json(['success'=>'Product saved successfully.']);
+    }
+    /**
+     * Show the form for editing the specified resource.
+     *
+     * @param  \App\Product
+     * @return \Illuminate\Http\Response
+     */
+    public function edit($id)
+    {
+        $product = Product::find($id);
+        return response()->json($product);
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     *
+     * @param  \App\Product
+     * @return \Illuminate\Http\Response
+     */
+    public function destroy($id)
+    {
+        Product::find($id)->delete();
+
+        return response()->json(['success'=>'Product deleted successfully.']);
+    }
+}
